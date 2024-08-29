@@ -62,11 +62,12 @@ class LineByLineJSONLoader(BaseLoader):
                 # 创建文档对象
                 documents.append(Document(page_content=content, metadata={'id': json_obj.get('_id', '')}))
         return documents
-
+# parser = argparse.ArgumentParser()
+# parser.add_argument('filepath', type=str)
+# args = parser.parse_args()
 # 使用自定义加载器
-loader = LineByLineJSONLoader('dataset/medical.json')
+loader = LineByLineJSONLoader("medical.json")
 documents = loader.load()
-
 # 文本切分
 splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 split_documents = []
@@ -105,7 +106,28 @@ def retrieve_knowledge(faiss, query):
 def generate_answer(tokenizer, model, query, knowledge):
     prompt = f'作为一名顶级医疗助手，你的主要职责是提供精准、专业且富有同理心的医疗建议。你具备全面的医疗知识，能够实时更新并反映最新的医学进展。你的工作方式始终以患者为中心，确保提供最高标准的护理和清晰的沟通。技能：专家诊断与建议，深入分析患者提供的信息，结合最新医学知识进行精准诊断。提出科学合理的治疗建议，确保患者理解并信任你的建议。规则：在任何情况下都不允许破坏角色设定。不说废话，不编造事实。\n\n已知内容:{knowledge}\n\n问题:\n\n{query}'
     #这一步要再formulate下加个prompt
-    response = model.chat(tokenizer, prompt, temperature=0.001)
+    messages = [
+    {"role": "system", "content": prompt},
+    {"role": "user", "content": "你是谁?"},
+    ]
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        return_tensors="ms"
+    )
+    terminators = [
+        tokenizer.eos_token_id,
+        tokenizer.convert_tokens_to_ids("<|eot_id|>")
+    ]
+    response = model.generate(
+            input_ids,
+            max_new_tokens=20,
+            eos_token_id=terminators,
+            do_sample=False,
+            # do_sample=True,
+            # temperature=0.6,
+            # top_p=0.9,
+        )
     answer = response[0]
     return answer
 
@@ -118,8 +140,8 @@ def rag_pipeline(faiss, tokenizer, model, query, use_rag):
         answer = generate_answer(tokenizer, model, query, "")
         return answer, ""
     
-model_path = "./.mindnlp/model/ZhipuAI/glm-4-9b-chat"
-st.title("RAG Demo")
+model_path = "01ai/Yi-6B-Chat"
+st.title("AI医疗诊断大师")
 faiss = load_knowledge_base(split_documents)
 tokenizer, model = load_model_and_tokenizer(model_path)
 
@@ -140,7 +162,7 @@ if submitted and query:
     st.session_state['knowledge'] = knowledge
 
 elif submitted:
-    st.warning("请输入一个问题。")
+    st.warning("请输入一个医疗诊断相关的问题。")
 
 with st.subheader("用户输入"):
     st.text_area("User Query", query, height=50)

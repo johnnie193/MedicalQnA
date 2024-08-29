@@ -37,15 +37,15 @@ from mindspore._c_expression import _framework_profiler_step_end
 # 加载tokenizer文件
 
 batch_size = 32
-model_name_or_path = "./.mindnlp/model/ZhipuAI/glm-4-9b-chat"
+model_name_or_path = "01ai/Yi-6B-Chat"
 task = "mrpc"
 peft_type = PeftType.PROMPT_TUNING
 num_epochs = 20
-peft_config = LoraConfig(task_type="SEQ_2_SEQ_LM", inference_mode=False, r=8, lora_alpha=16, lora_dropout=0.1)
+peft_config = LoraConfig(task_type="CAUSAL_LM", inference_mode=False, r=8, lora_alpha=16, lora_dropout=0.1)
 lr = 3e-4
 max_length = 128
 
-tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, mirror='modelscope')
+tokenizer = AutoTokenizer.from_pretrained("01ai/Yi-6B-Chat", mirror="modelscope")
 model = AutoModelForCausalLM.from_pretrained(
     model_name_or_path,
     mirror='modelscope',
@@ -96,7 +96,7 @@ def get_dataset(dataset, tokenizer, shuffle=True):
 train_dataset = get_dataset(train_dataset, tokenizer)
 eval_dataset = get_dataset(validation_dataset, tokenizer, shuffle=False)
 
-optimizer = mindnlp.core.optim.AdamW(model.parameters(), lr=lr)
+optimizer = mindnlp.core.optim.AdamW(model.trainable_params(),lr=lr)
 lr_scheduler = get_linear_schedule_with_warmup(
     optimizer=optimizer,
     num_warmup_steps=0,
@@ -108,7 +108,7 @@ def forward_fn(**batch):
     loss = outputs.loss
     return loss
 
-grad_fn = mindspore.value_and_grad(forward_fn, None, tuple(model.parameters()))
+grad_fn = mindspore.value_and_grad(forward_fn, None, model.trainable_params())
 
 def train_step(**batch):
     loss, grads = grad_fn(**batch)
