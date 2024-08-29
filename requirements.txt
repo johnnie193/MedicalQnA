@@ -1,0 +1,8 @@
+mindspore==2.3.0 --extra-index-url=https://ms-release.obs.cn-north-4.myhuaweicloud.com/2.3.0/MindSpore/unified/aarch64 --trusted-host=ms-release.obs.cn-north-4.myhuaweicloud.com
+jieba
+tiktoken
+langchain
+langchain_community
+faiss-cpu
+streamlit
+git+https://gitee.com/mindspore-lab/mindnlp
